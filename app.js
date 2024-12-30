@@ -1,4 +1,3 @@
-// Stocker l'état actuel des données
 // wss://lotto-r7aq.onrender.com/
 // ws://localhost:8080
 let currentData = {
@@ -28,7 +27,7 @@ function initializeWebSocket() {
       }
 
       if (data) {
-        updateOverlayWithMerge(data); // Appel avec fusion des données
+        updateOverlayWithMerge(data);
       }
     } catch (error) {
       console.error("Error processing WebSocket message:", error);
@@ -37,7 +36,7 @@ function initializeWebSocket() {
 
   ws.onclose = () => {
     console.warn("Overlay WebSocket disconnected. Attempting to reconnect...");
-    setTimeout(initializeWebSocket, 3000); // Réessayer après 5 secondes
+    setTimeout(initializeWebSocket, 3000);
   };
 
   ws.onerror = (error) => {
@@ -45,13 +44,11 @@ function initializeWebSocket() {
   };
 }
 
-// Fusionner les nouvelles données avec les précédentes
 function updateOverlayWithMerge(newData) {
-  currentData = { ...currentData, ...newData }; // Fusion des anciennes et nouvelles données
-  updateOverlay(currentData); // Mise à jour de l'overlay avec les données complètes
+  currentData = { ...currentData, ...newData };
+  updateOverlay(currentData);
 }
 
-// Mise à jour de l'interface utilisateur
 function updateOverlay(data) {
   const fields = {
     "#teamA .team-name": data.teamAName,
