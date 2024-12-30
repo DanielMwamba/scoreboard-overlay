@@ -1,57 +1,102 @@
-const ws = new WebSocket("wss://lotto-r7aq.onrender.com/");
-
-ws.onopen = () => {
-  console.log("Overlay WebSocket connected");
+// Stocker l'état actuel des données
+// wss://lotto-r7aq.onrender.com/
+// ws://localhost:8080
+let currentData = {
+  teamAName: "",
+  teamBName: "",
+  teamAScore: 0,
+  teamBScore: 0,
+  gameTimer: "",
+  period: "",
+  shotClock: "",
 };
 
-ws.onmessage = (event) => {
-  try {
-    let data;
-    if (event.data instanceof Blob) {
-      const reader = new FileReader();
-      reader.onload = function () {
-        data = JSON.parse(reader.result);
-        updateOverlay(data);
-      };
-      reader.readAsText(event.data);
-    } else {
-      data = JSON.parse(event.data);
-      updateOverlay(data);
+function initializeWebSocket() {
+  const ws = new WebSocket("wss://lotto-r7aq.onrender.com/");
+
+  ws.onopen = () => {
+    console.log("Overlay WebSocket connected");
+  };
+
+  ws.onmessage = async (event) => {
+    try {
+      let data;
+      if (event.data instanceof Blob) {
+        data = await parseBlob(event.data);
+      } else {
+        data = JSON.parse(event.data);
+      }
+
+      if (data) {
+        updateOverlayWithMerge(data); // Appel avec fusion des données
+      }
+    } catch (error) {
+      console.error("Error processing WebSocket message:", error);
     }
-  } catch (error) {
-    console.error("Error processing WebSocket message:", error);
-  }
-};
+  };
 
-ws.onclose = () => {
-  console.log("Overlay WebSocket disconnected");
-};
+  ws.onclose = () => {
+    console.warn("Overlay WebSocket disconnected. Attempting to reconnect...");
+    setTimeout(initializeWebSocket, 3000); // Réessayer après 5 secondes
+  };
 
-ws.onerror = (error) => {
-  console.error("WebSocket error:", error);
-};
+  ws.onerror = (error) => {
+    console.error("WebSocket encountered an error:", error);
+  };
+}
 
+// Fusionner les nouvelles données avec les précédentes
+function updateOverlayWithMerge(newData) {
+  currentData = { ...currentData, ...newData }; // Fusion des anciennes et nouvelles données
+  updateOverlay(currentData); // Mise à jour de l'overlay avec les données complètes
+}
+
+// Mise à jour de l'interface utilisateur
 function updateOverlay(data) {
-  if (data.teamAName !== undefined) {
-    document.querySelector("#teamA .team-name").textContent = data.teamAName;
-  }
-  if (data.teamBName !== undefined) {
-    document.querySelector("#teamB .team-name").textContent = data.teamBName;
-  }
-  if (data.teamAScore !== undefined) {
-    document.querySelector("#teamA .score").textContent = data.teamAScore;
-  }
-  if (data.teamBScore !== undefined) {
-    document.querySelector("#teamB .score").textContent = data.teamBScore;
-  }
-  if (data.gameTimer !== undefined) {
-    document.getElementById("timer").textContent = data.gameTimer;
-  }
-  if (data.period !== undefined) {
-    document.getElementById("period").textContent =
-      data.period === "OT" ? "Overtime" : `${data.period} Quarter`;
-  }
-  if (data.shotClock !== undefined) {
-    document.getElementById("shotClock").textContent = data.shotClock;
+  const fields = {
+    "#teamA .team-name": data.teamAName,
+    "#teamB .team-name": data.teamBName,
+    "#teamA .score": data.teamAScore,
+    "#teamB .score": data.teamBScore,
+    "#timer": data.gameTimer,
+    "#shotClock": data.shotClock,
+    "#period": formatPeriod(data.period),
+  };
+
+  for (const [selector, value] of Object.entries(fields)) {
+    if (value !== undefined && value !== null) {
+      const element = document.querySelector(selector);
+      if (element) {
+        element.textContent = value;
+      }
+    }
   }
 }
+
+// Formater la période
+function formatPeriod(period) {
+  if (period === "OT") {
+    return "Overtime";
+  }
+  if (period === 1) {
+    return `${period}st Quarter`;
+  }
+  if (period === 2) {
+    return `${period}nd Quarter`;
+  }
+  return `${period}th Quarter`;
+}
+
+// Fonction pour analyser un Blob
+async function parseBlob(blob) {
+  try {
+    const text = await blob.text();
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Error parsing Blob data:", error);
+    return null;
+  }
+}
+
+// Initialiser la connexion WebSocket
+initializeWebSocket();
