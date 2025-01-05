@@ -1,5 +1,5 @@
-// wss://lotto-r7aq.onrender.com/
-// ws://localhost:8080
+// Configuration WebSocket
+const WS_URL = "wss://scoreboard-t4k5.onrender.com";
 let currentData = {
   teamAName: "",
   teamBName: "",
@@ -10,45 +10,40 @@ let currentData = {
   shotClock: "",
 };
 
+// Initialisation de la connexion WebSocket
 function initializeWebSocket() {
-  const ws = new WebSocket("wss://lotto-r7aq.onrender.com/");
+  const ws = new WebSocket(WS_URL);
 
-  ws.onopen = () => {
-    console.log("Overlay WebSocket connected");
-  };
+  ws.onopen = () => console.log("Overlay WebSocket connecté");
 
   ws.onmessage = async (event) => {
     try {
-      let data;
-      if (event.data instanceof Blob) {
-        data = await parseBlob(event.data);
-      } else {
-        data = JSON.parse(event.data);
-      }
-
+      const data = await parseWebSocketMessage(event);
       if (data) {
         updateOverlayWithMerge(data);
       }
     } catch (error) {
-      console.error("Error processing WebSocket message:", error);
+      console.error("Erreur lors du traitement du message WebSocket:", error);
     }
   };
 
   ws.onclose = () => {
-    console.warn("Overlay WebSocket disconnected. Attempting to reconnect...");
-    setTimeout(initializeWebSocket, 3000);
+    console.warn("WebSocket déconnecté. Reconnexion dans 3 secondes...");
+    setTimeout(initializeWebSocket, 3000); // Réessai après 3 secondes
   };
 
   ws.onerror = (error) => {
-    console.error("WebSocket encountered an error:", error);
+    console.error("Erreur WebSocket:", error);
   };
 }
 
+// Traite et fusionne les nouvelles données reçues
 function updateOverlayWithMerge(newData) {
-  currentData = { ...currentData, ...newData };
-  updateOverlay(currentData);
+  currentData = { ...currentData, ...newData }; // Fusion des nouvelles données
+  updateOverlay(currentData); // Mise à jour de l'overlay
 }
 
+// Met à jour les éléments DOM de l'overlay
 function updateOverlay(data) {
   const fields = {
     "#teamA .team-name": data.teamAName,
@@ -65,35 +60,48 @@ function updateOverlay(data) {
       const element = document.querySelector(selector);
       if (element) {
         element.textContent = value;
+      } else {
+        console.warn(`Élément introuvable pour le sélecteur: ${selector}`);
       }
     }
   }
 }
 
-// Formater la période
+// Formate la période pour l'affichage
 function formatPeriod(period) {
-  if (period === "OT") {
-    return "Overtime";
+  switch (period) {
+    case "OT":
+      return "Overtime";
+    case 1:
+      return "1st Quarter";
+    case 2:
+      return "2nd Quarter";
+    case 3:
+      return "3rd Quarter";
+    default:
+      return `${period}th Quarter`;
   }
-  if (period === 1) {
-    return `${period}st Quarter`;
-  }
-  if (period === 2) {
-    return `${period}nd Quarter`;
-  }
-  return `${period}th Quarter`;
 }
 
-// Fonction pour analyser un Blob
-async function parseBlob(blob) {
+// Analyse les messages WebSocket, y compris les Blobs
+async function parseWebSocketMessage(event) {
+  if (event.data instanceof Blob) {
+    try {
+      const text = await event.data.text();
+      return JSON.parse(text);
+    } catch (error) {
+      console.error("Erreur lors de l'analyse du Blob:", error);
+      return null;
+    }
+  }
+
   try {
-    const text = await blob.text();
-    return JSON.parse(text);
+    return JSON.parse(event.data);
   } catch (error) {
-    console.error("Error parsing Blob data:", error);
+    console.error("Erreur lors de l'analyse des données JSON:", error);
     return null;
   }
 }
 
-// Initialiser la connexion WebSocket
+// Lancement de l'application
 initializeWebSocket();
