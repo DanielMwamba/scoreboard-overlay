@@ -2,7 +2,7 @@
 // ws://localhost:8080
 
 // Configuration WebSocket
-const WS_URL = "https://lotto-r7aq.onrender.com/";
+const WS_URL = "wss://scoreboard-t4k5.onrender.com";
 let currentData = {
   teamAName: "",
   teamBName: "",
